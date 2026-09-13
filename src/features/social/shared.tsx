@@ -31,7 +31,7 @@ export const scheduleLabel = (date: string) => {
 
 export function Panel({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const { colors } = useTheme();
-  return <View style={[s.panel, { backgroundColor: colors.surface }, style]}>{children}</View>;
+  return <View style={[s.panel, { borderColor: colors.border }, style]}>{children}</View>;
 }
 export function Badge({ children, kind = 'success' }: { children: React.ReactNode; kind?: 'success' | 'accent' | 'neutral' }) {
   const { colors } = useTheme();
@@ -44,14 +44,14 @@ export function Metric({ value, label, onPress }: { value: string | number; labe
 }
 export function RowLink({ title, subtitle, icon, onPress, right }: { title: string; subtitle?: string; icon?: keyof typeof Feather.glyphMap; onPress: () => void; right?: React.ReactNode }) {
   const { colors } = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={[s.rowLink, { backgroundColor: colors.surface }]}>
-    {icon && <View style={[s.iconWrap, { backgroundColor: colors.surfaceAlt }]}><Feather name={icon} size={19} color={colors.text} /></View>}
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={onPress} style={[s.rowLink, { borderBottomColor: colors.border }]}>
+    {icon && <View style={s.iconWrap}><Feather name={icon} size={19} color={colors.accentPressed} /></View>}
     <View style={s.flex}><T variant="label">{title}</T>{subtitle && <T variant="small">{subtitle}</T>}</View>
     {right ?? <Feather name="chevron-right" size={18} color={colors.muted} />}
   </Pressable>;
 }
 export const s = StyleSheet.create({
   flex: { flex: 1 }, gap: { gap: 16 }, smallGap: { gap: 8 }, row: { flexDirection: 'row', alignItems: 'center', gap: 12 }, wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, between: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  center: { alignItems: 'center', justifyContent: 'center' }, panel: { padding: 20, borderRadius: 24, gap: 12 }, badge: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }, metric: { flex: 1, minHeight: 60, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  rowLink: { minHeight: 66, borderRadius: 18, padding: 12, flexDirection: 'row', gap: 12, alignItems: 'center' }, iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, sectionGap: { marginTop: 24 },
+  center: { alignItems: 'center', justifyContent: 'center' }, panel: { paddingVertical: 18, borderTopWidth: 1, borderBottomWidth: 1, gap: 12 }, badge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 }, metric: { flex: 1, minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  rowLink: { minHeight: 68, paddingVertical: 11, flexDirection: 'row', gap: 12, alignItems: 'center', borderBottomWidth: 1 }, iconWrap: { width: 32, height: 40, alignItems: 'center', justifyContent: 'center' }, sectionGap: { marginTop: 24 },
 });

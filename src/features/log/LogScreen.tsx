@@ -36,10 +36,12 @@ export default function LogScreen() {
   const logMove = useAppStore(state => state.logMove);
   const showToast = useUIStore(state => state.showToast);
   const cameraDraftUri = useUIStore(state => state.cameraDraftUri);
+  const cameraDraftCategory = useUIStore(state => state.cameraDraftCategory);
   const setCameraDraftUri = useUIStore(state => state.setCameraDraftUri);
+  const setCameraDraftCategory = useUIStore(state => state.setCameraDraftCategory);
   const [step, setStep] = useState(initialActivity ? 1 : 0);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<ActivityCategory | null>(null);
+  const [category, setCategory] = useState<ActivityCategory | null>(cameraDraftCategory);
   const [activityId, setActivityId] = useState(initialActivity?.id ?? '');
   const [placeName, setPlaceName] = useState(initialActivity?.placeName ?? '');
   const [participantIds, setParticipantIds] = useState<string[]>([]);
@@ -97,6 +99,7 @@ export default function LogScreen() {
       occurred.setDate(occurred.getDate() - dateOffset);
       const id = logMove({ activityId: activity.id, category: activity.category, placeName: placeName.trim() || undefined, date: occurred.toISOString(), note: note.trim() || undefined, photo, participantIds, confirmedParticipantIds: [], visibility, locationVisibility: !placeName.trim() || /home|friend|apartment/i.test(placeName) ? 'hidden' : locationVisibility });
       if (cameraDraftUri) { setPickedPhoto(cameraDraftUri); setCameraDraftUri(null); }
+      setCameraDraftCategory(null);
       setSavedMoveId(id);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
@@ -159,7 +162,7 @@ export default function LogScreen() {
                 {photo ? <Photo image={photo} style={styles.photoPreview}><View style={styles.retake}><Feather name="camera" size={16} color="#fff" /><T variant="caption" color="#fff">Retake</T></View></Photo> : <><View style={[styles.photoIcon, { backgroundColor: colors.accentSoft }]}><Feather name="camera" size={27} color={colors.accentPressed} /></View><T variant="heading">Snap the Move</T><T variant="caption" color={colors.textSecondary}>Rear camera opens first</T></>}
               </Pressable>
               <View style={styles.photoActions}><Button title={photo ? 'Retake' : 'Open camera'} icon="camera" onPress={() => router.push('/camera')} style={styles.flex} /><Button title="Camera roll" icon="image" variant="secondary" onPress={() => { void pickPhoto(); }} style={styles.flex} /></View>
-              {photo ? <Button title="Remove photo" variant="ghost" onPress={() => { setPickedPhoto(undefined); setCameraDraftUri(null); }} /> : null}
+              {photo ? <Button title="Remove photo" variant="ghost" onPress={() => { setPickedPhoto(undefined); setCameraDraftUri(null); setCameraDraftCategory(null); }} /> : null}
               <View style={styles.sectionGap}><Field value={note} onChangeText={setNote} placeholder="The little thing you want to remember…" multiline maxLength={280} accessibilityLabel="Optional memory note" textAlignVertical="top" style={styles.noteInput} /><T variant="caption" color={colors.muted} style={styles.counter}>{note.length}/280</T></View>
               <View style={styles.sectionGap}><Section title="When was it?" /><View style={styles.chips}>{[{ label: 'Today', offset: 0 }, { label: 'Yesterday', offset: 1 }, { label: 'Two days ago', offset: 2 }].map(option => <Chip key={option.offset} label={option.label} selected={dateOffset === option.offset} onPress={() => setDateOffset(option.offset)} />)}</View></View>
               <Pressable onPress={() => setPrivacyOpen(true)} accessibilityRole="button" accessibilityLabel={`Privacy: ${visibilityLabels[visibility]}. Location: ${locationLabels[locationVisibility]}. Change privacy settings`} style={[styles.privacyRow, { backgroundColor: colors.surface, borderRadius: radius.md }]}><Feather name={visibility === 'private' ? 'lock' : visibility === 'public' ? 'globe' : 'users'} color={colors.textSecondary} size={20} /><View style={styles.flex}><T variant="label">{visibilityLabels[visibility]}</T><T variant="caption" color={colors.textSecondary}>Location: {!placeName.trim() || /home|friend|apartment/i.test(placeName) ? 'Hidden' : locationLabels[locationVisibility]}</T></View><Feather name="chevron-right" color={colors.muted} size={19} /></Pressable>
