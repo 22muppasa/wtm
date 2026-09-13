@@ -1,10 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Avatar, Brand, Button, Chip, Field, Photo, Screen, Sheet, T } from '@/components/ui';
+import Animated, { Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { Avatar, Button, Chip, CubeMark, Field, Photo, Screen, Sheet, T } from '@/components/ui';
 import { TasteprintShape } from '@/components/TasteprintShape';
 import { activities, categoryLabels } from '@/data/seed';
 import { calculateConfidence, calculateTaste } from '@/services/engine';
@@ -22,6 +23,37 @@ const axisDescriptions: Record<keyof TasteVector, { title: string; body: string 
   spontaneity: { title: 'Open to a detour.', body: 'Your favorites leave a little room for the unplanned.' },
   rawness: { title: 'Keep it real.', body: 'Your picks lean toward relaxed, hands-on experiences.' },
 };
+
+function CubeIntro({ onStart, onDemo }: { onStart: () => void; onDemo: () => void }) {
+  const { colors, radius } = useTheme();
+  const { height, width } = useWindowDimensions();
+  const scrollY = useSharedValue(0);
+  const travel = Math.max(420, height * 0.72);
+  const onScroll = useAnimatedScrollHandler(event => { scrollY.value = event.contentOffset.y; });
+  const cubeStyle = useAnimatedStyle(() => {
+    const progress = interpolate(scrollY.value, [0, travel], [0, 1], Extrapolation.CLAMP);
+    return { transform: [{ translateX: progress * (86 - width / 2) }, { translateY: progress * -82 }, { rotate: `${progress * 135}deg` }, { scale: 1 - progress * 0.66 }] };
+  });
+  return <Screen scroll={false} padded={false}>
+    <View style={styles.introRoot}>
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} snapToInterval={Math.max(560, height - 42)} decelerationRate="fast">
+        <View style={[styles.introPage, { minHeight: Math.max(560, height - 42) }]}>
+          <View style={styles.introTop}><T variant="caption" color={colors.textSecondary}>WTM · WHAT’S THE MOVE?</T><View style={[styles.livePill, { backgroundColor: colors.accentSoft }]}><View style={[styles.liveDot, { backgroundColor: colors.accent }]} /><T variant="caption">REAL LIFE</T></View></View>
+          <View style={styles.introCopy}><T variant="display" style={styles.introTitle}>Your life has a taste.{`\n`}Let’s find it.</T><T color={colors.textSecondary} style={styles.introBody}>Remember what you did, rank what you loved, and find the next move with your people.</T><View style={styles.scrollHint}><T variant="caption" color={colors.textSecondary}>SCROLL TO START</T><Feather name="arrow-down" size={16} color={colors.textSecondary} /></View></View>
+        </View>
+        <View style={[styles.introPage, styles.introSecond, { minHeight: Math.max(560, height - 42) }]}>
+          <View style={styles.introMiniBrand}><T variant="title">WTM</T><T variant="caption" color={colors.textSecondary}>YOUR WORLD, IN MOTION</T></View>
+          <View style={styles.introFeatures}>
+            {[{ icon: 'users', title: 'Follow their taste', body: 'See what friends loved, saved, and would actually do again.' }, { icon: 'camera', title: 'Snap the moment', body: 'Open the rear camera fast. Rate the photos when you get home.' }, { icon: 'calendar', title: 'Make the plan', body: 'Turn a good idea into a simple invite, RSVP, and night out.' }].map(item => <View key={item.title} style={[styles.introFeature, { backgroundColor: colors.surface, borderRadius: radius.lg }]}><View style={[styles.introFeatureIcon, { backgroundColor: colors.accentSoft }]}><Feather name={item.icon as keyof typeof Feather.glyphMap} size={21} color={colors.accentPressed} /></View><View style={styles.flex}><T variant="heading">{item.title}</T><T variant="small" color={colors.textSecondary}>{item.body}</T></View></View>)}
+            <View style={[styles.travelIntro, { backgroundColor: colors.ink, borderRadius: radius.lg }]}><Feather name="map" size={23} color={colors.accent} /><View style={styles.flex}><T variant="heading" color={colors.white}>New city, same taste.</T><T variant="small" color={colors.white}>Tell WTM where you landed. Your recommendations travel with you.</T></View></View>
+          </View>
+          <View style={styles.introActions}><Button title="Build my WTM" icon="arrow-right" onPress={onStart} /><Pressable accessibilityRole="button" onPress={onDemo} style={styles.existingAccount}><T variant="small" color={colors.textSecondary}>Preview Shawn’s WTM</T></Pressable></View>
+        </View>
+      </Animated.ScrollView>
+      <Animated.View pointerEvents="none" style={[styles.introCube, { left: width / 2 - 62 }, cubeStyle]}><CubeMark size={124} /></Animated.View>
+    </View>
+  </Screen>;
+}
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -76,27 +108,14 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)/home');
   };
 
-  if (stage === 0) return (
-    <Screen scroll={false} padded={false}>
-      <View style={styles.welcomeHeader}><Brand size={45} /><T variant="caption" color={colors.textSecondary}>REAL LIFE, TOGETHER.</T></View>
-      <Photo image="friends" style={[styles.welcomePhoto, { borderRadius: radius.hero }]}>
-        <LinearGradient colors={['transparent', colors.overlay, colors.ink]} locations={[0.12, 0.42, 1]} style={styles.welcomeGradient}>
-          <FlowEnter style={styles.welcomeCopy}>
-            <View style={styles.welcomeEyebrow}><View style={[styles.dot, { backgroundColor: colors.accent }]} /><T variant="caption" color={colors.white}>WHAT’S THE MOVE?</T></View>
-            <T variant="display" color={colors.white} style={styles.welcomeTitle}>What do you actually love doing?</T>
-            <T color={colors.white} style={styles.welcomeDescription}>Rank the things you do.{'\n'}Discover your taste.{'\n'}Find better moves with your people.</T>
-          </FlowEnter>
-          <View style={styles.welcomeActions}><Button title="Get started" icon="arrow-right" onPress={() => stageChange(1)} /><Pressable accessibilityRole="button" onPress={() => setDemoOpen(true)} style={styles.existingAccount}><T variant="small" color={colors.white}>I already have an account</T></Pressable></View>
-        </LinearGradient>
-      </Photo>
-      <Pressable accessibilityRole="button" onPress={() => setDemoOpen(true)} style={styles.demoLink}><T variant="caption" color={colors.textSecondary}>Just looking around? Try the demo</T><Feather name="arrow-up-right" size={14} color={colors.textSecondary} /></Pressable>
+  if (stage === 0) return (<>
+      <CubeIntro onStart={() => stageChange(1)} onDemo={() => setDemoOpen(true)} />
       <Sheet visible={demoOpen} onClose={() => setDemoOpen(false)} title="Meet your next good night">
         <View style={styles.demoIdentity}><Avatar userId="shawn" size={62} /><View style={styles.flex}><T variant="heading">Shawn’s WTM</T><T variant="small" color={colors.textSecondary}>UIUC · 72 moves · 4 crews</T></View></View>
         <T color={colors.textSecondary}>Explore the full app with a sample profile. Your changes are saved on this device. Account sign-in isn’t connected in this demo.</T>
         <Button title="Continue as Shawn" icon="arrow-right" loading={finishing} onPress={() => finish(true)} />
       </Sheet>
-    </Screen>
-  );
+    </>);
 
   return (
     <Screen scroll={false} padded={false}>
@@ -145,7 +164,7 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 }, welcomeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingBottom: 20 }, welcomePhoto: { flex: 1, marginHorizontal: 16 }, welcomeGradient: { ...StyleSheet.absoluteFill, justifyContent: 'flex-end', padding: 24, gap: 28 }, welcomeCopy: { gap: 16 }, welcomeEyebrow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, dot: { width: 6, height: 6, borderRadius: 3 }, welcomeTitle: { maxWidth: 320, fontSize: 38, lineHeight: 43 }, welcomeDescription: { lineHeight: 24 }, welcomeActions: { gap: 4 }, existingAccount: { minHeight: 44, justifyContent: 'center', alignItems: 'center' }, demoLink: { minHeight: 48, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }, demoIdentity: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  flex: { flex: 1 }, introRoot: { flex: 1 }, introPage: { paddingHorizontal: 24, paddingVertical: 22, justifyContent: 'space-between' }, introTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, livePill: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 999, flexDirection: 'row', gap: 7, alignItems: 'center' }, liveDot: { width: 6, height: 6, borderRadius: 3 }, introCopy: { gap: 18, paddingBottom: 24 }, introTitle: { fontSize: 43, lineHeight: 47, maxWidth: 360 }, introBody: { maxWidth: 350, lineHeight: 24 }, scrollHint: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }, introSecond: { paddingTop: 18 }, introMiniBrand: { paddingLeft: 54, minHeight: 56, justifyContent: 'center' }, introFeatures: { gap: 10 }, introFeature: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 13 }, introFeatureIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, travelIntro: { padding: 18, flexDirection: 'row', alignItems: 'flex-start', gap: 13 }, introActions: { gap: 3 }, introCube: { position: 'absolute', top: 106, width: 124, height: 124 }, existingAccount: { minHeight: 44, justifyContent: 'center', alignItems: 'center' }, demoIdentity: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   content: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }, subtitle: { marginTop: 10, marginBottom: 24 }, sectionGap: { marginTop: 24 }, campusPhoto: { height: 272 }, campusOverlay: { ...StyleSheet.absoluteFill, justifyContent: 'flex-end', padding: 22, gap: 8 }, quietCard: { marginTop: 24, padding: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 12 }, privacyIcon: { width: 72, height: 72, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 24 }, privacyOptions: { gap: 4 }, footnote: { marginTop: 24, textAlign: 'center' },
   filters: { gap: 8, paddingBottom: 20 }, seedGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }, seedCard: { width: '48%', borderWidth: 2, overflow: 'hidden' }, seedImage: { height: 116, borderRadius: 12 }, seedCheck: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 9, right: 9 }, seedText: { padding: 10, minHeight: 64, gap: 3 }, selectionCount: { textAlign: 'center', marginBottom: 10 }, tutorialChoices: { gap: 8 }, versus: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, paddingVertical: 3 }, versusLine: { width: 32, height: 1 },
   revealHeader: { alignItems: 'center', gap: 12 }, center: { textAlign: 'center' }, tasteprint: { alignItems: 'center', marginVertical: 20 }, revealDescription: { paddingHorizontal: 8 }, insights: { marginTop: 24, gap: 10 }, insight: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }, insightIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, footer: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 14 },

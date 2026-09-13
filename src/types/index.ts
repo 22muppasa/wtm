@@ -19,6 +19,8 @@ export interface Move {
   id: string; userId: string; activityId: string; category: ActivityCategory; placeName?: string;
   date: string; note?: string; photo?: string; participantIds: string[]; confirmedParticipantIds: string[];
   visibility: Visibility; locationVisibility: LocationVisibility; rank?: number; createdAt: string;
+  /** A quick 1–5 reflection used by the post-Move photo queue. */
+  ratings?: Partial<Record<TasteAxis, number>>;
   /** Copy of a tagged experience, created only after this user explicitly confirms. */
   sourceMoveId?: string;
 }

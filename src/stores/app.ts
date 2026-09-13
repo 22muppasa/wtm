@@ -3,18 +3,20 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { activities, currentUserId, initialMoves, seedCrews, users } from '../data/seed';
 import { insertRankedMove, reorderRankedCategory } from '../services/engine';
-import type { ActivityCategory, AppTheme, Crew, Move, Proposal, ProposalResponse, Visibility } from '../types';
+import type { ActivityCategory, AppTheme, Crew, Move, Proposal, ProposalResponse, TasteVector, Visibility } from '../types';
 
 type NewMove = Omit<Move, 'id' | 'userId' | 'createdAt'>;
 type NewProposal = Pick<Proposal, 'crewId' | 'activityId' | 'scheduledAt' | 'fit' | 'reasons'>;
 export interface AppState {
   hydrated: boolean; persistenceError: string | null; onboarded: boolean; campus: string; defaultVisibility: Visibility;
   moves: Move[]; crews: Crew[]; proposals: Proposal[]; savedIds: string[]; savedListIds: string[]; followingIds: string[];
-  theme: AppTheme; fridayMode: boolean; notificationReadIds: string[];
+  theme: AppTheme; fridayMode: boolean; notificationReadIds: string[]; travelCity: string | null;
   completeOnboarding: (activityIds?: string[]) => void;
   setCampus: (campus: string) => void; setVisibility: (visibility: Visibility) => void;
   setTheme: (theme: AppTheme) => void; setFridayMode: (enabled: boolean) => void;
+  setTravelCity: (city: string | null) => void;
   logMove: (move: NewMove) => string; updateMove: (id: string, patch: Partial<Move>) => void;
+  rateMove: (id: string, ratings: TasteVector) => void;
   rankMove: (id: string, index: number) => void; reorderCategory: (category: ActivityCategory, orderedMoveIds: string[]) => void;
   toggleSave: (activityId: string) => void; toggleSaveList: (id: string) => void; toggleFollow: (id: string) => void;
   createCrew: (name: string, memberIds: string[]) => string;
@@ -34,7 +36,7 @@ function initialData() {
     onboarded: false, campus: 'UIUC', defaultVisibility: 'friends' as Visibility,
     moves: clone(initialMoves), crews: clone(seedCrews), proposals: [] as Proposal[],
     savedIds: ['bouldering', 'orchard', 'ceramics'], savedListIds: [] as string[], followingIds: ['maya', 'alex', 'ryan', 'noah'],
-    theme: 'light' as AppTheme, fridayMode: false, notificationReadIds: [] as string[],
+    theme: 'light' as AppTheme, fridayMode: false, notificationReadIds: [] as string[], travelCity: null as string | null,
   };
 }
 
@@ -56,6 +58,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   setCampus: (campus) => { if (campus.trim()) set({ campus: campus.trim().slice(0, 100) }); },
   setVisibility: (defaultVisibility) => set({ defaultVisibility }),
   setTheme: (theme) => set({ theme }), setFridayMode: (fridayMode) => set({ fridayMode }),
+  setTravelCity: (city) => set({ travelCity: city?.trim().slice(0, 100) || null }),
   logMove: (input) => {
     const confirmedCopy = input.sourceMoveId ? get().moves.find((move) => move.userId === currentUserId && move.sourceMoveId === input.sourceMoveId) : undefined;
     if (confirmedCopy) return confirmedCopy.id;
@@ -100,6 +103,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
     }
     return { moves };
   }),
+  rateMove: (id, ratings) => set((state) => ({ moves: state.moves.map((move) => move.id === id && move.userId === currentUserId ? { ...move, ratings: Object.fromEntries(Object.entries(ratings).map(([axis, value]) => [axis, Math.max(1, Math.min(5, Math.round(value)))])) } : move) })),
   rankMove: (id, index) => set((state) => state.moves.some((move) => move.id === id && move.userId === currentUserId) ? { moves: insertRankedMove(state.moves, id, index) } : {}),
   reorderCategory: (category, ids) => set((state) => ({ moves: reorderRankedCategory(state.moves, currentUserId, category, ids) })),
   toggleSave: (id) => { if (activities.some((activity) => activity.id === id)) set((state) => ({ savedIds: toggle(state.savedIds, id) })); },
@@ -139,8 +143,8 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   resetDemo: () => set({ ...initialData(), onboarded: true, hydrated: true, persistenceError: null }),
   replayOnboarding: () => set({ ...initialData(), onboarded: false, hydrated: true, persistenceError: null }),
 }), {
-  name: 'wtm-local-v1', version: 1, storage: createJSONStorage(() => AsyncStorage),
-  partialize: (state) => ({ onboarded: state.onboarded, campus: state.campus, defaultVisibility: state.defaultVisibility, moves: state.moves, crews: state.crews, proposals: state.proposals, savedIds: state.savedIds, savedListIds: state.savedListIds, followingIds: state.followingIds, theme: state.theme, fridayMode: state.fridayMode, notificationReadIds: state.notificationReadIds }),
+  name: 'wtm-local-v2', version: 2, storage: createJSONStorage(() => AsyncStorage),
+  partialize: (state) => ({ onboarded: state.onboarded, campus: state.campus, defaultVisibility: state.defaultVisibility, moves: state.moves, crews: state.crews, proposals: state.proposals, savedIds: state.savedIds, savedListIds: state.savedListIds, followingIds: state.followingIds, theme: state.theme, fridayMode: state.fridayMode, notificationReadIds: state.notificationReadIds, travelCity: state.travelCity }),
   onRehydrateStorage: () => (state, error) => {
     // Do not leave the splash screen stuck if browser/private-storage access fails.
     queueMicrotask(() => useAppStore.setState({ hydrated: true, persistenceError: error ? 'Local storage was unavailable. Changes may not survive a restart.' : null }));

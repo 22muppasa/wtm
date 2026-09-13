@@ -73,9 +73,10 @@ export const initialMoves: Move[] = history.map((id, index) => {
     id: `seed-${String(index + 1).padStart(3, '0')}`, userId: currentUserId, activityId: id,
     category: activity.category, placeName: activity.placeName, date, createdAt: date,
     participantIds: participants, confirmedParticipantIds: [...participants],
-    visibility: 'friends', locationVisibility: activity.placeName ? 'approximate' : 'hidden',
+    visibility: index < 6 ? 'public' : 'friends', locationVisibility: activity.placeName ? 'approximate' : 'hidden',
     ...(ranked > 0 ? { rank: ranked } : {}),
     ...(id === 'illini' ? { note: 'Still thinking about that last shot.' } : {}),
+    ...(index >= 69 ? { photo: activity.image } : {}),
   };
 });
 export const seedCrews: Crew[] = [

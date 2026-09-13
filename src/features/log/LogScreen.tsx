@@ -35,6 +35,8 @@ export default function LogScreen() {
   const crews = useAppStore(state => state.crews);
   const logMove = useAppStore(state => state.logMove);
   const showToast = useUIStore(state => state.showToast);
+  const cameraDraftUri = useUIStore(state => state.cameraDraftUri);
+  const setCameraDraftUri = useUIStore(state => state.setCameraDraftUri);
   const [step, setStep] = useState(initialActivity ? 1 : 0);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<ActivityCategory | null>(null);
@@ -42,7 +44,7 @@ export default function LogScreen() {
   const [placeName, setPlaceName] = useState(initialActivity?.placeName ?? '');
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [note, setNote] = useState('');
-  const [photo, setPhoto] = useState<string>();
+  const [pickedPhoto, setPickedPhoto] = useState<string>();
   const [dateOffset, setDateOffset] = useState(0);
   const [visibility, setVisibility] = useState<Move['visibility']>(defaultVisibility);
   const [locationVisibility, setLocationVisibility] = useState<Move['locationVisibility']>('approximate');
@@ -52,6 +54,7 @@ export default function LogScreen() {
   const savingRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
   const activity = activities.find(item => item.id === activityId);
+  const photo = cameraDraftUri ?? pickedPhoto;
   const friends = users.filter(user => user.id !== currentUserId);
   const listedActivities = useMemo(() => {
     if (query.trim() || category) return activities.filter(item => (!category || item.category === category) && `${item.name} ${item.placeName ?? ''} ${categoryLabels[item.category]}`.toLowerCase().includes(query.toLowerCase().trim()));
@@ -82,7 +85,7 @@ export default function LogScreen() {
   const pickPhoto = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.8 });
-      if (!result.canceled && result.assets[0]) setPhoto(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) { setPickedPhoto(result.assets[0].uri); setCameraDraftUri(null); }
     } catch { showToast('Couldn’t open your photos. You can still log this move.'); }
   };
   const submit = () => {
@@ -93,6 +96,7 @@ export default function LogScreen() {
       const occurred = new Date();
       occurred.setDate(occurred.getDate() - dateOffset);
       const id = logMove({ activityId: activity.id, category: activity.category, placeName: placeName.trim() || undefined, date: occurred.toISOString(), note: note.trim() || undefined, photo, participantIds, confirmedParticipantIds: [], visibility, locationVisibility: !placeName.trim() || /home|friend|apartment/i.test(placeName) ? 'hidden' : locationVisibility });
+      if (cameraDraftUri) { setPickedPhoto(cameraDraftUri); setCameraDraftUri(null); }
       setSavedMoveId(id);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
@@ -151,10 +155,11 @@ export default function LogScreen() {
               <T variant="small" color={colors.textSecondary} style={styles.footnote}>They’ll confirm before it enters their history. In this local demo, tags stay on your device.</T>
             </> : null}
             {step === 3 ? <>
-              <Pressable accessibilityRole="button" accessibilityLabel={photo ? 'Change photo' : 'Add an optional photo'} onPress={() => { void pickPhoto(); }} style={[styles.photoPicker, { backgroundColor: colors.surfaceAlt, borderRadius: radius.xl, borderColor: colors.border }]}>
-                {photo ? <Photo image={photo} style={styles.photoPreview} /> : <><View style={[styles.photoIcon, { backgroundColor: colors.surface }]}><Feather name="camera" size={25} color={colors.textSecondary} /></View><T variant="label">Add a photo</T><T variant="caption" color={colors.textSecondary}>Entirely optional</T></>}
+              <Pressable accessibilityRole="button" accessibilityLabel={photo ? 'Retake photo' : 'Open rear camera'} onPress={() => router.push('/camera')} style={[styles.photoPicker, { backgroundColor: colors.surfaceAlt, borderRadius: radius.xl, borderColor: colors.border }]}>
+                {photo ? <Photo image={photo} style={styles.photoPreview}><View style={styles.retake}><Feather name="camera" size={16} color="#fff" /><T variant="caption" color="#fff">Retake</T></View></Photo> : <><View style={[styles.photoIcon, { backgroundColor: colors.accentSoft }]}><Feather name="camera" size={27} color={colors.accentPressed} /></View><T variant="heading">Snap the Move</T><T variant="caption" color={colors.textSecondary}>Rear camera opens first</T></>}
               </Pressable>
-              {photo ? <Button title="Remove photo" variant="ghost" onPress={() => setPhoto(undefined)} /> : null}
+              <View style={styles.photoActions}><Button title={photo ? 'Retake' : 'Open camera'} icon="camera" onPress={() => router.push('/camera')} style={styles.flex} /><Button title="Camera roll" icon="image" variant="secondary" onPress={() => { void pickPhoto(); }} style={styles.flex} /></View>
+              {photo ? <Button title="Remove photo" variant="ghost" onPress={() => { setPickedPhoto(undefined); setCameraDraftUri(null); }} /> : null}
               <View style={styles.sectionGap}><Field value={note} onChangeText={setNote} placeholder="The little thing you want to remember…" multiline maxLength={280} accessibilityLabel="Optional memory note" textAlignVertical="top" style={styles.noteInput} /><T variant="caption" color={colors.muted} style={styles.counter}>{note.length}/280</T></View>
               <View style={styles.sectionGap}><Section title="When was it?" /><View style={styles.chips}>{[{ label: 'Today', offset: 0 }, { label: 'Yesterday', offset: 1 }, { label: 'Two days ago', offset: 2 }].map(option => <Chip key={option.offset} label={option.label} selected={dateOffset === option.offset} onPress={() => setDateOffset(option.offset)} />)}</View></View>
               <Pressable onPress={() => setPrivacyOpen(true)} accessibilityRole="button" accessibilityLabel={`Privacy: ${visibilityLabels[visibility]}. Location: ${locationLabels[locationVisibility]}. Change privacy settings`} style={[styles.privacyRow, { backgroundColor: colors.surface, borderRadius: radius.md }]}><Feather name={visibility === 'private' ? 'lock' : visibility === 'public' ? 'globe' : 'users'} color={colors.textSecondary} size={20} /><View style={styles.flex}><T variant="label">{visibilityLabels[visibility]}</T><T variant="caption" color={colors.textSecondary}>Location: {!placeName.trim() || /home|friend|apartment/i.test(placeName) ? 'Hidden' : locationLabels[locationVisibility]}</T></View><Feather name="chevron-right" color={colors.muted} size={19} /></Pressable>
@@ -180,7 +185,7 @@ const styles = StyleSheet.create({
   quietNote: { padding: 16, marginTop: 24, gap: 12, flexDirection: 'row', alignItems: 'center' },
   people: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, person: { minWidth: '45%', flex: 1, alignItems: 'center', paddingVertical: 20, gap: 10, borderWidth: 1 },
   crew: { minHeight: 68, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 14 }, footnote: { marginTop: 24, lineHeight: 21 },
-  photoPicker: { minHeight: 186, alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, overflow: 'hidden' }, photoIcon: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 4 }, photoPreview: { width: '100%', height: 208 },
+  photoPicker: { minHeight: 226, alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, overflow: 'hidden' }, photoIcon: { width: 58, height: 58, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginBottom: 4 }, photoPreview: { width: '100%', height: 226 }, photoActions: { flexDirection: 'row', gap: 10, marginTop: 12 }, retake: { position: 'absolute', right: 12, bottom: 12, backgroundColor: 'rgba(0,0,0,.58)', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
   noteInput: { minHeight: 104 }, counter: { textAlign: 'right', marginTop: 6 }, privacyRow: { marginTop: 24, minHeight: 76, padding: 16, gap: 12, flexDirection: 'row', alignItems: 'center' },
   successTop: { alignItems: 'center', padding: 24 }, successContent: { paddingHorizontal: 24, paddingVertical: 16, gap: 28 }, successIntro: { alignItems: 'center', gap: 10 }, successCheck: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   savedCard: { overflow: 'hidden' }, savedPhoto: { width: '100%', height: 228 }, savedDetails: { padding: 20, gap: 8 }, row: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 }, centerText: { textAlign: 'center', maxWidth: 280 },
