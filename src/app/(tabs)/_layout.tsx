@@ -1,0 +1,11 @@
+import React from 'react';
+import {View,Pressable,Platform} from 'react-native';
+import {Tabs,router,usePathname} from 'expo-router';
+import {Feather} from '@expo/vector-icons';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {BlurView} from 'expo-blur';
+import {useTheme} from '@/theme';
+import {T,tap} from '@/components/ui';
+const items=[{name:'home',label:'Home',icon:'home'},{name:'explore',label:'Explore',icon:'search'},{name:'log',label:'Log',icon:'plus'},{name:'crews',label:'Crews',icon:'users'},{name:'you',label:'You',icon:'user'}] as const;
+function FloatingTabs(){const{colors}=useTheme();const insets=useSafeAreaInsets();const path=usePathname();return <View style={{position:'absolute',bottom:Math.max(insets.bottom,14),left:20,right:20,borderRadius:25,overflow:'hidden',borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface,boxShadow:'0 6px 28px rgba(35,28,21,.08)'}}>{Platform.OS==='ios'&&<BlurView tint="systemMaterial" intensity={60} style={{position:'absolute',inset:0}}/>}<View style={{flexDirection:'row',alignItems:'center',paddingVertical:8,paddingHorizontal:5}}>{items.map(item=>{const active=path.endsWith(item.name);const log=item.name==='log';return <Pressable key={item.name} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{selected:active}} onPress={()=>{tap();if(log)router.push('/log');else router.navigate(`/(tabs)/${item.name}`);}} style={{flex:1,minHeight:49,alignItems:'center',justifyContent:'center',gap:3}}><View style={{width:log?40:29,height:log?36:26,alignItems:'center',justifyContent:'center',borderRadius:13,backgroundColor:log?colors.accent:active?colors.accentSoft:'transparent'}}><Feather name={item.icon} size={log?22:19} color={active?colors.accentPressed:colors.text}/></View><T variant="caption" color={active?colors.accentPressed:colors.textSecondary} style={{fontSize:10,fontWeight:active?'600':'400'}}>{item.label}</T></Pressable>;})}</View></View>;}
+export default function TabLayout(){const{colors}=useTheme();return <Tabs tabBar={()=> <FloatingTabs/>} screenOptions={{headerShown:false,sceneStyle:{backgroundColor:colors.background}}}><Tabs.Screen name="home"/><Tabs.Screen name="explore"/><Tabs.Screen name="crews"/><Tabs.Screen name="you"/></Tabs>;}

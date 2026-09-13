@@ -1,0 +1,8 @@
+import React from 'react';
+import {View,Linking} from 'react-native';
+import {useLocalSearchParams,router} from 'expo-router';
+import {Screen,Header,T,Photo,Section,ActivityRow,Button,Empty} from '@/components/ui';
+import {useTheme} from '@/theme';
+import {catalog} from '@/repositories';
+import {useUIStore} from '@/stores/ui';
+export default function Place(){const{id}=useLocalSearchParams<{id:string}>(),items=catalog.activities().filter(a=>a.placeId===id),place=items[0];const{colors}=useTheme();const toast=useUIStore(s=>s.showToast);if(!place)return <Screen><Header back/><Empty title="A place to make a Move." body="Find an activity first, and the place will follow." action="Explore activities" onAction={()=>router.replace('/(tabs)/explore')}/></Screen>;return <Screen><Header back title={place.placeName} subtitle="It’s what you do here that counts."/><Photo image={place.image} style={{height:250}}/><View style={{gap:7}}><T variant="label">{place.distance} minutes away · {place.price?'$'.repeat(place.price):'Free'}</T><T color={colors.textSecondary}>Around Urbana-Champaign</T></View><Section title="Moves to make here"/>{items.map(a=><ActivityRow key={a.id} activity={a}/>)}<Button title="Get directions" variant="secondary" icon="navigation" onPress={()=>{void Linking.openURL('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((place.placeName??'')+' Urbana Champaign Illinois')).catch(()=>toast('Maps could not open on this device.'));}}/><T variant="caption" color={colors.muted}>Demo venue information. Check current hours and prices before heading out.</T></Screen>;}
